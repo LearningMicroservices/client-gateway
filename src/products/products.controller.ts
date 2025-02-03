@@ -13,36 +13,30 @@ import {
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { catchError } from 'rxjs';
 import { PaginationDto } from 'src/common';
-import { PRODUCT_SERVICE } from 'src/config';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { NATS_SERVICE } from 'src/config';
 
 @Controller('products')
 export class ProductsController {
-  constructor(
-    @Inject(PRODUCT_SERVICE) private readonly productsClient: ClientProxy,
-  ) {}
+  constructor(@Inject(NATS_SERVICE) private readonly natsClient: ClientProxy) {}
 
   @Post()
   createProduct(@Body() createProductDto: CreateProductDto) {
-    return this.productsClient
-      .send({ cmd: 'createProduct' }, createProductDto)
-      .pipe(
-        catchError((error) => {
-          throw new RpcException(error);
-        }),
-      );
+    return this.natsClient.send('createProduct', createProductDto).pipe(
+      catchError((error) => {
+        throw new RpcException(error);
+      }),
+    );
   }
 
   @Get()
   findAllProducts(@Query() paginationDto: PaginationDto) {
-    return this.productsClient
-      .send({ cmd: 'findAllProducts' }, paginationDto)
-      .pipe(
-        catchError((error) => {
-          throw new RpcException(error);
-        }),
-      );
+    return this.natsClient.send('findAllProducts', paginationDto).pipe(
+      catchError((error) => {
+        throw new RpcException(error);
+      }),
+    );
   }
 
   @Get(':id')
@@ -50,7 +44,7 @@ export class ProductsController {
     if (isNaN(+id)) {
       throw new HttpException('Invalid id', 400);
     }
-    return this.productsClient.send({ cmd: 'findOneProduct' }, id).pipe(
+    return this.natsClient.send('findOneProduct', { id: +id }).pipe(
       catchError((error) => {
         throw new RpcException(error);
       }),
@@ -66,7 +60,7 @@ export class ProductsController {
       throw new HttpException('Invalid id', 400);
     }
     const payload = { ...updateProductDto, id: +id };
-    return this.productsClient.send({ cmd: 'updateProduct' }, payload).pipe(
+    return this.natsClient.send('updateProduct', payload).pipe(
       catchError((error) => {
         throw new RpcException(error);
       }),
@@ -78,7 +72,7 @@ export class ProductsController {
     if (isNaN(+id)) {
       throw new HttpException('Invalid id', 400);
     }
-    return this.productsClient.send({ cmd: 'removeProduct' }, { id: +id }).pipe(
+    return this.natsClient.send('removeProduct', { id: +id }).pipe(
       catchError((error) => {
         throw new RpcException(error);
       }),

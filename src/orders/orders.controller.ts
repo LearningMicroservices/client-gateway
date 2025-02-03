@@ -10,21 +10,19 @@ import {
   Query,
 } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { ORDER_SERVICE } from 'src/config';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { catchError } from 'rxjs';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
 import { StatusDto } from './dto/status.dto';
+import { NATS_SERVICE } from 'src/config';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(
-    @Inject(ORDER_SERVICE) private readonly ordersClient: ClientProxy,
-  ) {}
+  constructor(@Inject(NATS_SERVICE) private readonly natsClient: ClientProxy) {}
 
   @Post()
   createOrder(@Body() createOrderDto: CreateOrderDto) {
-    return this.ordersClient.send({ cmd: 'createOrder' }, createOrderDto).pipe(
+    return this.natsClient.send('createOrder', createOrderDto).pipe(
       catchError((error) => {
         throw new RpcException(error);
       }),
@@ -33,18 +31,16 @@ export class OrdersController {
 
   @Get()
   findAllOrders(@Query() orderPaginationDto: OrderPaginationDto) {
-    return this.ordersClient
-      .send({ cmd: 'findAllOrders' }, orderPaginationDto)
-      .pipe(
-        catchError((error) => {
-          throw new RpcException(error);
-        }),
-      );
+    return this.natsClient.send('findAllOrders', orderPaginationDto).pipe(
+      catchError((error) => {
+        throw new RpcException(error);
+      }),
+    );
   }
 
   @Get(':id')
   findOrderById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ordersClient.send({ cmd: 'findOneOrder' }, id).pipe(
+    return this.natsClient.send('findOneOrder', id).pipe(
       catchError((error) => {
         throw new RpcException(error);
       }),
@@ -56,8 +52,8 @@ export class OrdersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() status: StatusDto,
   ) {
-    return this.ordersClient
-      .send({ cmd: 'changeStatus' }, { id, status: status.status })
+    return this.natsClient
+      .send('changeStatus', { id, status: status.status })
       .pipe(
         catchError((error) => {
           throw new RpcException(error);
